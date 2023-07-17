@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice to Text with Direct API Call</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Speak to Convert to Text</h1>
+        <div class="form-group">
+            <textarea id="output" class="form-control" rows="6"></textarea>
+        </div>
+        <button id="startButton" class="btn btn-primary mt-2">Start Listening</button>
+        <div id="timer" class="mt-2"></div>
+    </div>
+
+    <script>
+        // Check if the browser supports the Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
+
+        if (typeof SpeechRecognition !== 'undefined') {
+            // Get the necessary DOM elements
+            const outputTextarea = document.getElementById('output');
+            const startButton = document.getElementById('startButton');
+            const timerElement = document.getElementById('timer');
+
+            // Create a SpeechRecognition object
+            const recognition = new SpeechRecognition();
+
+            // Set the properties of the recognition object
+            recognition.lang = 'en-US'; // Set the language, change as needed
+            recognition.interimResults = true; // Show interim results while speaking
+
+            let startTime;
+            let timerInterval;
+
+            // Update the timer element with the elapsed time
+            function updateTimer() {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                timerElement.textContent = `Recording Time: ${elapsedTime.toFixed(1)} seconds`;
+            }
+
+            // Event listener for when the speech recognition engine returns a result
+            recognition.onresult = (event) => {
+                const result = event.results[0][0].transcript.toLowerCase();
+                outputTextarea.value += result + ' '; // Append the result to the output textarea
+
+                // Call the function to generate text using GPT-3.5
+                generateText(result);
+            };
+
+            // Event listener for when the recognition starts
+            recognition.onstart = () => {
+                startButton.textContent = 'Listening...';
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 100); // Update the timer every 100 milliseconds
+            };
+
+            // Event listener for when the recognition ends
+            recognition.onend = () => {
+                startButton.textContent = 'Start Listening';
+                clearInterval(timerInterval); // Stop updating the timer
+            };
+
+            // Event listener for the startButton click to initiate speech recognition
+            startButton.addEventListener('click', () => {
+                if (recognition.continuous) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+
+            // Function to generate text using GPT-3.5
+            function generateText(inputText) {
+                // Replace 'YOUR_API_KEY' with your actual API key from OpenAI
+                const apiKey = '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';
+                const apiUrl = 'https://api.openai.com/v1/engines/davinci-codex/completions';
+
+                fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        prompt: inputText,
+                        max_tokens: 100
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const generatedText = data.choices[0].text.trim();
+                    outputTextarea.value += '\n\nGenerated Text:\n' + generatedText;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        } else {
+            alert('Your browser does not support the Web Speech API. Please use a modern browser.');
+        }
+    </script>
+</body>
+</html>
